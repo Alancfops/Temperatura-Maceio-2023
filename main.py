@@ -1,30 +1,43 @@
 import pandas as pd
 
-# Carregar o arquivo CSV
-dados = pd.read_csv('TPG.csv', sep=';', header=0)
 
-# Converter colunas para numérico e preencher valores NaN com 0
-dados['TEMPERATURA MAXIMA'] = pd.to_numeric(dados['TEMPERATURA MAXIMA'], errors='coerce').fillna(0)
-dados['TEMPERATURA MINIMA'] = pd.to_numeric(dados['TEMPERATURA MINIMA'], errors='coerce').fillna(0)
+caminho_csv = 'TPG.csv'
 
-# Converter colunas para listas
-lista_maxima = dados['TEMPERATURA MAXIMA'].tolist()
-lista_minima = dados['TEMPERATURA MINIMA'].tolist()
 
-# Calcular estatísticas diretamente com pandas
-media_maxima = pd.Series(lista_maxima).mean()
-mediana_maxima = pd.Series(lista_maxima).median()
-moda_maxima = pd.Series(lista_maxima).mode().iloc[0] if not pd.Series(lista_maxima).mode().empty else None
+dados = pd.read_csv(caminho_csv, sep=';', header=4)
 
-media_minima = pd.Series(lista_minima).mean()
-mediana_minima = pd.Series(lista_minima).median()
-moda_minima = pd.Series(lista_minima).mode().iloc[0] if not pd.Series(lista_minima).mode().empty else None
+dados.columns = [
+    'Data', 'Hora UTC', 'Precipitacao Total', 'Pressao Atmosferica Estacao',
+    'Pressao Atmosferica Maxima', 'Pressao Atmosferica Minima', 'Radiacao Global',
+    'Temperatura Ar', 'Temperatura Ponto Orvalho', 'Temperatura Maxima',
+    'Temperatura Minima', 'Temperatura Orvalho Maxima', 'Temperatura Orvalho Minima',
+    'Umidade Relativa Maxima', 'Umidade Relativa Minima', 'Umidade Relativa',
+    'Vento Direcao', 'Vento Rajada Maxima', 'Vento Velocidade Horaria'
+]
 
-# Imprimir resultados
-print(f"Média da temperatura máxima: {media_maxima}")
-print(f"Mediana da temperatura máxima: {mediana_maxima}")
-print(f"Moda da temperatura máxima: {moda_maxima}")
+dados['Data'] = pd.to_datetime(dados['Data'], dayfirst=True, format='%d/%m/%Y', errors='coerce')
 
-print(f"Média da temperatura mínima: {media_minima}")
-print(f"Mediana da temperatura mínima: {mediana_minima}")
-print(f"Moda da temperatura mínima: {moda_minima}")
+dados['Temperatura Maxima'] = pd.to_numeric(dados['Temperatura Maxima'].str.replace(',', '.'), errors='coerce')
+dados['Temperatura Minima'] = pd.to_numeric(dados['Temperatura Minima'].str.replace(',', '.'), errors='coerce')
+
+dados['Temperatura Maxima'] = dados['Temperatura Maxima'].fillna(0)
+dados['Temperatura Minima'] = dados['Temperatura Minima'].fillna(0)
+
+dados['Mês'] = dados['Data'].dt.month
+
+resultados_maxima = dados.groupby('Mês')['Temperatura Maxima'].agg(
+    Média='mean', Mediana='median', Moda=lambda x: x.mode()[0] if not x.mode().empty else None
+).reset_index()
+
+resultados_minima = dados.groupby('Mês')['Temperatura Minima'].agg(
+    Média='mean', Mediana='median', Moda=lambda x: x.mode()[0] if not x.mode().empty else None
+).reset_index()
+
+resultados_maxima = resultados_maxima.round({'Média': 1, 'Mediana': 1, 'Moda': 1})
+resultados_minima = resultados_minima.round({'Média': 1, 'Mediana': 1, 'Moda': 1})
+
+print("Estatísticas da Temperatura Máxima por Mês:")
+print(resultados_maxima)
+
+print("\nEstatísticas da Temperatura Mínima por Mês:")
+print(resultados_minima)
